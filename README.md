@@ -15,23 +15,23 @@ domain/            Lean 4 project (core Lean only, no Mathlib; toolchain pinned 
   Oracle.lean             stdin/stdout reference verdicts for differential tests
   Reject/Bad.lean         deliberately unsupported Lean, used to test the generator refuses it
 gen/               GENERATED ledger_gen.ml + .mli, checked in. Never hand-edit.
-test/              unit.ml (boundaries, overflow) and diff.ml (seeded differential vs the oracle)
+test/              unit.ml (boundaries, overflow), diff.ml (seeded differential), pbt.ml (Hegel properties)
 scripts/           verify.sh (everything), proof-gate.sh, check-gen.sh, gen.sh, test-reject.sh
 ```
 
 ## Run it
 
 Prerequisites: [elan](https://github.com/leanprover/elan) (it fetches the pinned Lean, 4.35.0),
-and an OCaml 5.x opam switch with `dune` and `alcotest`:
+and an OCaml 5.x opam switch with `dune`, `alcotest` and `hegel`:
 
 ```sh
-opam switch create 5.3.0 && eval $(opam env) && opam install dune alcotest   # once
+opam switch create 5.3.0 && eval $(opam env) && opam install dune alcotest hegel   # once
 scripts/verify.sh                                                            # everything
 ```
 
 `verify.sh` = Lean build + proof gate, generator rejection tests, drift check, `dune build`,
-unit tests, and 3000 seeded random differential cases (`LEDGER_SEED`, `LEDGER_CASES`) plus two
-ledger-size boundary cases. To regenerate after editing the Lean source: `scripts/gen.sh`, then commit.
+unit tests, 3000 seeded random differential cases (`LEDGER_SEED`, `LEDGER_CASES`) plus two
+ledger-size boundary cases, and the Hegel property tests. To regenerate after editing the Lean source: `scripts/gen.sh`, then commit.
 CI (`.github/workflows/ci.yml`) has a Lean-only `drift` job and a full `test` job.
 *(The CI file has not been exercised on GitHub; the scripts it calls have been run locally.)*
 
@@ -109,10 +109,35 @@ ledgers with one corrupted tx), runs the generated OCaml and the oracle, and com
 (`LEDGER_SEED`, default 1). It also asserts that both accept and reject paths are well exercised.
 The oracle additionally re-checks `validate` against `decide (Valid t)` at runtime.
 
+## Property tests with Hegel (`test/pbt.ml`)
+
+[Hegel](https://opam.ocaml.org/packages/hegel/) (0.26.6; Hypothesis-based engine bundled in the opam package,
+runs in-process, no network) adds what the hand-rolled driver lacks: shrinking and engine-driven generation.
+`LEDGER_SEED` (default 1) and `LEDGER_PBT_CASES` (default 1000) control it.
+
+* **`ocaml = lean oracle`**, in two variants. The oracle is **one long-lived Lean process** driven case by case over
+  pipes (it flushes after each case). Counterexamples shrink to e.g. `0:1000000000000 1:-1000000000000`.
+* **Oracle-free properties of the implementation** (Lean proves the model versions; these check the OCaml has them):
+  balances of all accounts cancel on any valid ledger (the double-entry invariant); `balance_of` is additive over
+  append; `ledger_valid (l @ [t]) = ledger_valid l && validate t`; and a ledger-size property
+  (k copies of a 1000-posting tx, k around 1000, with balances computed independently of the generated code).
+
+Lessons learned while building it:
+* **Shrinkers minimise the choice sequence, not the value.** A 1000-posting transaction built from one
+  `max_size n` draw counts as "simpler" than a 2-posting one needing several draws, so the first version always reported
+  the 1000-posting counterexample. Fix: run each property once on small structures (shrinks to tiny cases) and once on
+  size boundaries (`~big`).
+* **Random structure sizes can't reach big bounds.** Six-transaction ledgers never approach the 10^6-posting limit; a
+  deliberate off-by-one there went undetected until a dedicated boundary property was added. Boundaries need targeted
+  properties or fixed examples, whichever tool generates the rest.
+* Coverage counters (valid/invalid mix) are asserted so a degenerate generator cannot pass quietly.
+
+`diff.ml` stays as a fast deterministic regression run; `unit.ml` keeps the named boundary examples.
+
 Mutation check (done by hand, not automated): seven single-line mutations of `gen/ledger_gen.ml`
 (off-by-one in each bound, dropped oversize/sum check, wrong account match, min postings 1) are each caught by
-the differential test alone.
+the differential test alone, and by the Hegel tests after adding the ledger-size property.
 
 ## Tool versions used
 
-Lean 4.35.0 (Lake 5.0.0), elan 4.2.4, OCaml 5.3.0, dune 3.24.2, alcotest 1.9.1, Ubuntu 24.04.
+Lean 4.35.0 (Lake 5.0.0), elan 4.2.4, OCaml 5.3.0, dune 3.24.2, alcotest 1.9.1, hegel 0.26.6, Ubuntu 24.04.

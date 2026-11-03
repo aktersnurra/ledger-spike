@@ -39,6 +39,7 @@ def report (txs : List Transaction) (out : IO.FS.Stream) : IO Unit := do
   for a in accts do
     out.putStrLn s!"B {a} {Ledger.balanceOf a good}"
   out.putStrLn "."
+  out.flush   -- lets a driver keep one oracle process and ask case by case
 
 def main : IO UInt32 := do
   let stdin ← IO.getStdin

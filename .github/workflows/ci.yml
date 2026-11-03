@@ -27,5 +27,5 @@ jobs:
       - uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 5.3
-      - run: opam install -y dune alcotest
+      - run: opam install -y dune alcotest hegel
       - run: opam exec -- scripts/verify.sh

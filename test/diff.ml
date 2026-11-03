@@ -5,6 +5,7 @@
         LEDGER_CASES   random cases, default 3000
    Replay a failure with the same LEDGER_SEED. *)
 module L = Ledger_gen
+open Support
 
 let env_int name d = match Sys.getenv_opt name with Some s -> int_of_string s | None -> d
 let seed = env_int "LEDGER_SEED" 1
@@ -84,24 +85,6 @@ let big_cases () =
   let l = List.init 1000 (fun _ -> big_tx) in
   [ l; tx [ p 1 1; p 2 (-1) ] :: l ]
 
-(* ---------- text format and expected output ---------- *)
-let tx_line (t : L.transaction) =
-  String.concat " " (List.map (fun (q : L.posting) -> Printf.sprintf "%d:%d" q.account q.amount) t.postings)
-
-let case_text txs = String.concat "" (List.map (fun t -> tx_line t ^ "\n") txs) ^ ".\n"
-
-let ok b = if b then "ok" else "bad"
-
-let expected txs =
-  let ts = List.map (fun t -> "T " ^ ok (L.transaction_validate t)) txs in
-  let good = List.filter L.transaction_validate txs in
-  let accts =
-    List.concat_map (fun (t : L.transaction) -> List.map (fun (q : L.posting) -> q.account) t.postings) good
-    |> List.sort_uniq compare
-  in
-  let bs = List.map (fun a -> Printf.sprintf "B %d %d" a (L.ledger_balance_of a good)) accts in
-  ts @ [ "L " ^ ok (L.ledger_valid txs) ] @ bs
-
 (* ---------- run ---------- *)
 let read_lines file =
   let ic = open_in file in
@@ -117,8 +100,6 @@ let split_cases lines =
     | l :: rest -> go (l :: cur) acc rest
   in
   go [] [] lines
-
-let trunc s = if String.length s > 600 then String.sub s 0 600 ^ "...[truncated]" else s
 
 let differential () =
   let oracle =

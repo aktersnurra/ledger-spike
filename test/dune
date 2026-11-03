@@ -1,3 +1,3 @@
 (tests
- (names unit diff)
- (libraries ledger_gen alcotest))
+ (names unit diff pbt)
+ (libraries ledger_gen alcotest hegel unix))
