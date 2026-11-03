@@ -52,8 +52,9 @@ the bounds (see 'TxSumFitsInt63'); callers should check 'validate' first. *)
 val transaction_sum : transaction -> int
 
 (* True iff 't' is balanced and within bounds ('validate_iff').
-Order matters for the OCaml code: '&&' short-circuits, so 'sum' is only
-evaluated once every amount and the posting count are known to be in bounds. *)
+The sum is evaluated last. On out-of-bounds input the OCaml sum may wrap, but
+then a bounds conjunct is already false, so the verdict is unaffected; when all
+bounds hold, the sum cannot overflow ('TxSumFitsInt63'). *)
 val transaction_validate : transaction -> bool
 
 (* Every transaction valid and at most 'maxLedgerPostings' postings in total. *)

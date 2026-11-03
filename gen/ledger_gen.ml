@@ -62,8 +62,9 @@ let posting_in_bounds (p : posting) : bool =
   ((-max_amount) <= p.amount) && (p.amount <= max_amount)
 
 (* True iff 't' is balanced and within bounds ('validate_iff').
-Order matters for the OCaml code: '&&' short-circuits, so 'sum' is only
-evaluated once every amount and the posting count are known to be in bounds. *)
+The sum is evaluated last. On out-of-bounds input the OCaml sum may wrap, but
+then a bounds conjunct is already false, so the verdict is unaffected; when all
+bounds hold, the sum cannot overflow ('TxSumFitsInt63'). *)
 let transaction_validate (t : transaction) : bool =
   (2 <= (List.length t.postings))
    && ((List.length t.postings) <= max_postings)

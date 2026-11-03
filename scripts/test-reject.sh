@@ -3,7 +3,7 @@
 # and must not leave generated output behind.
 set -uo pipefail
 cd "$(dirname "$0")/../domain"
-lake build emit Reject >/dev/null || exit 1
+lake build Ledger Reject emit >/dev/null || exit 1
 fail=0
 for d in natSub intDiv firstAmount maxAmt propUse optUse; do
   tmp=$(mktemp -d)

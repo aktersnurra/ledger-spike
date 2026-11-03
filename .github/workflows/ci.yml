@@ -1,0 +1,31 @@
+name: ci
+on: [push, pull_request]
+
+jobs:
+  # Lean-only: proofs, generator rejection tests, and the drift check.
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install elan (Lean toolchain is pinned by domain/lean-toolchain)
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - run: scripts/proof-gate.sh
+      - run: scripts/test-reject.sh
+      - run: scripts/check-gen.sh   # fails if gen/ differs from what Emit.lean produces
+
+  # Everything, including the OCaml build and differential tests against the Lean oracle.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install elan
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.3
+      - run: opam install -y dune alcotest
+      - run: opam exec -- scripts/verify.sh
