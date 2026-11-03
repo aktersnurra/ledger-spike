@@ -1,0 +1,2 @@
+; Lean's build tree (domain/.lake) must not be scanned by dune.
+(dirs gen test)

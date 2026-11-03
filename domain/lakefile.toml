@@ -1,6 +1,6 @@
 name = "ledger"
 version = "0.1.0"
-defaultTargets = ["Ledger", "emit", "oracle"]
+defaultTargets = ["Ledger", "Reject", "emit", "oracle"]
 
 [[lean_lib]]
 name = "Ledger"
@@ -12,3 +12,6 @@ root = "Emit"
 [[lean_exe]]
 name = "oracle"
 root = "Oracle"
+
+[[lean_lib]]
+name = "Reject"

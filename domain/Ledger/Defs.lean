@@ -48,10 +48,13 @@ abbrev Ledger := List Transaction
 def Posting.inBounds (p : Posting) : Bool :=
   decide (-maxAmount ≤ p.amount) && decide (p.amount ≤ maxAmount)
 
+/-- Sum of a transaction's posting amounts. Equals the Lean `Int` sum only within
+the bounds (see `TxSumFitsInt63`); callers should check `validate` first. -/
 def Transaction.sum (t : Transaction) : Int :=
   t.postings.foldr (fun p acc => p.amount + acc) 0
 
-/-- Order matters for the OCaml code: `&&` short-circuits, so `sum` is only
+/-- True iff `t` is balanced and within bounds (`validate_iff`).
+Order matters for the OCaml code: `&&` short-circuits, so `sum` is only
 evaluated once every amount and the posting count are known to be in bounds. -/
 def Transaction.validate (t : Transaction) : Bool :=
   decide (2 ≤ t.postings.length) && decide (t.postings.length ≤ maxPostings) &&
@@ -60,10 +63,12 @@ def Transaction.validate (t : Transaction) : Bool :=
 def Ledger.postingCount (l : Ledger) : Nat :=
   l.foldr (fun t n => t.postings.length + n) 0
 
+/-- Every transaction valid and at most `maxLedgerPostings` postings in total. -/
 def Ledger.valid (l : Ledger) : Bool :=
   l.all Transaction.validate && decide (l.postingCount ≤ maxLedgerPostings)
 
-/-- Sum of the amounts of all postings to account `a`. -/
+/-- Sum of the amounts of all postings to account `a`. Exact (no overflow) when
+`Ledger.valid l` holds (see `BalanceFitsInt63`). -/
 def Ledger.balanceOf (a : Account) (l : Ledger) : Int :=
   l.foldr
     (fun t acc =>
