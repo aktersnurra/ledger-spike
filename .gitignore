@@ -1,0 +1,3 @@
+_build/
+domain/.lake/
+*.install
